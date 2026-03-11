@@ -25,11 +25,7 @@
     contain: layout style;
 }
 .page {
-    will-change: opacity;
-}
-/* 减少重绘区域 */
-#chat-room-content > * {
-    transform: translateZ(0);
+    
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -41,7 +37,7 @@
 .contact-row { contain: layout style; }
 #tab-msg, #tab-contacts, #tab-stories { will-change: auto; }
 .chat-room-page { transform: translateZ(0); -webkit-transform: translateZ(0); }
-img { content-visibility: auto; }
+
 
 
 /* ===== 全设备自适应魔法 ===== */
@@ -2951,10 +2947,14 @@ async function syncChatDB() {
 }
  // 苹果 iOS 后台弹窗必须的底层服务注册（专破苹果限制）
     if ('serviceWorker' in navigator) {
+    // ★ 只在 PWA 模式下注册，浏览器模式不需要
+    const isPWA = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+    if (isPWA) {
         const swCode = "self.addEventListener('notificationclick', function(e){ e.notification.close(); });";
         const swUrl = URL.createObjectURL(new Blob([swCode], {type: 'application/javascript'}));
         navigator.serviceWorker.register(swUrl).catch(()=>{});
-    }  
+    }
+}
 const LS_KEY = 'me_profile_config_v1';
     const POSTS_KEY = 'ins_posts_v1';
 
@@ -4433,7 +4433,11 @@ ${userName}评论了你："${myComment.text}"
 // ============================================================
     // 气泡CSS注入：把完整CSS规则塞进 <style> 标签，支持任何CSS写法
     // ============================================================
+    let lastInjectedCSS = null;
     function injectBubbleCSS(css) {
+        if (lastInjectedCSS === css) return; // 核心优化：如果气泡样式没变，就不要重复让浏览器重新计算样式，防止卡顿
+        lastInjectedCSS = css;
+        
         let styleTag = document.getElementById('bubble-css-inject');
         if (!styleTag) {
             styleTag = document.createElement('style');
@@ -4444,16 +4448,10 @@ ${userName}评论了你："${myComment.text}"
             styleTag.textContent = '';
             return;
         }
-        // ✅ 把用户CSS里所有选择器全部替换成我们固定的class名
-        // 这样用户粘贴任何格式的CSS都能生效！
         let injected = css
-            // 用户气泡（各种写法）→ 统一替换成 .msg-bubble-me
             .replace(/\.message-bubble\.user\s+\.content|\.message-row\.self\s+\.message-content|\.chat-bubble-me|\.msg-bubble-me|\.bubble-me|\.sent\s+\.bubble|\.self\s+\.content/g, '.msg-bubble-me')
-            // 用户气泡伪元素
             .replace(/\.message-bubble\.user\s+\.content::(before|after)|\.message-row\.self\s+\.message-content::(before|after)|\.chat-bubble-me::(before|after)/g, '.msg-bubble-me::$1')
-            // 对方气泡（各种写法）→ 统一替换成 .msg-bubble-them
             .replace(/\.message-bubble\.ai\s+\.content|\.message-row\.other\s+\.message-content|\.chat-bubble-other|\.msg-bubble-them|\.bubble-them|\.received\s+\.bubble|\.other\s+\.content/g, '.msg-bubble-them')
-            // 对方气泡伪元素
             .replace(/\.message-bubble\.ai\s+\.content::(before|after)|\.message-row\.other\s+\.message-content::(before|after)|\.chat-bubble-other::(before|after)/g, '.msg-bubble-them::$1');
         styleTag.textContent = injected;
     }
@@ -4461,8 +4459,14 @@ ${userName}评论了你："${myComment.text}"
 function renderChatMessages(id) {
     if (id !== currentChatId) return;
     const content = document.getElementById('chat-room-content');
-    const msgs = chatMessages[id] || [];
+    const allMsgs = chatMessages[id] || [];
+    
+    // ★ 核心优化：只渲染最近20条消息，防止内存爆炸   
+const MAX_RENDER = 20;
+    const msgs = allMsgs.length > MAX_RENDER ? allMsgs.slice(-MAX_RENDER) : allMsgs;
+    
     const friend = chatList.find(c => c.id === id);
+    
     const myAvatar = config.avatar || 'https://api.dicebear.com/7.x/notionists/svg?seed=Rabbit&backgroundColor=ffb6c1';
     const friendAvatar = friend ? friend.avatar : '';
     const bubbleCSS = friend && friend.bubbleCSS ? friend.bubbleCSS : '';
@@ -6755,7 +6759,9 @@ function sendEmojiFromPanel(id) {
 
 // 用户第一次点击屏幕时，仅请求通知权限
 document.body.addEventListener('click', function initKeepAlive() {
-    if ("Notification" in window && Notification.permission !== "granted") {
+    if ("Notification" in window && window.Notification.permission !== "granted") {
+    window.Notification.requestPermission();
+}{
         Notification.requestPermission();
     }
     document.body.removeEventListener('click', initKeepAlive);
@@ -6808,10 +6814,10 @@ function toggleKeepAlive() {
 function testSystemNotification() {
     if (!("Notification" in window)) return alert('❌ 不支持系统通知！');
 
-    if (Notification.permission === "granted") {
+    if (window.Notification.permission === "granted") {
         triggerTestNotif();
     } else {
-        Notification.requestPermission().then(perm => {
+        window.Notification.requestPermission().then(perm => {
             if (perm === "granted") triggerTestNotif();
             else alert('❌ 权限被拒绝！');
         });
@@ -6829,30 +6835,38 @@ function triggerTestNotif() {
 function showNotification(friend, text) {
     if (!friend) return;
     
-    // 提取纯文字
     let cleanText = String(text).replace(/<img[^>]+alt="([^"]+)"[^>]*>/g, '[$1]').replace(/<[^>]+>/g, '').trim();
     if (!cleanText) cleanText = '[图片/表情]';
     cleanText = cleanText.slice(0, 40);
 
-    // ★ 不论前台后台，都发系统弹窗
-    sendRealNotification(friend.alias || friend.name, cleanText, friend.avatar);
+    // ★ 用 try-catch 包裹，绝对不能让通知错误影响聊天主流程
+    try {
+        sendRealNotification(friend.alias || friend.name, cleanText, friend.avatar);
+    } catch(e) {
+        console.warn('[通知] 跳过:', e.message);
+    }
 }
 
-
+// 专治苹果 iOS 的终极弹窗核心函数
 // 专治苹果 iOS 的终极弹窗核心函数
 function sendRealNotification(title, body, icon = '') {
-    if (Notification.permission === "granted") {
-        navigator.serviceWorker.getRegistration().then(function(reg) {
-            if (reg && reg.showNotification) {
-                // 苹果 iOS 在后台必须用 Service Worker 才能弹窗
-                reg.showNotification(title, { body: body, icon: icon });
-            } else {
-                // 安卓或电脑的备用方案
-                new Notification(title, { body: body, icon: icon });
-            }
-        }).catch(function() {
-            new Notification(title, { body: body, icon: icon });
-        });
+    // ★ 必须先检查 Notification 是否存在！Safari 浏览器不支持！
+    if (!("Notification" in window)) return;
+    
+    try {
+        if (window.Notification.permission === "granted") {
+            navigator.serviceWorker.getRegistration().then(function(reg) {
+                if (reg && reg.showNotification) {
+                    reg.showNotification(title, { body: body, icon: icon });
+                } else {
+                    new window.Notification(title, { body: body, icon: icon });
+                }
+            }).catch(function() {
+                try { new window.Notification(title, { body: body, icon: icon }); } catch(e) {}
+            });
+        }
+    } catch(e) {
+        console.warn('[通知] 发送失败:', e.message);
     }
 }
 // ================= 心声/日记查看与历史记录控制 =================
