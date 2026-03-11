@@ -62,8 +62,9 @@
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 body, html { 
-    width: 100%; 
-    height: 100%;
+    width: 100vw; 
+    height: 100vh;
+    height: 100dvh; /* 苹果专属：动态全屏高度贴合 */
     overflow: hidden; 
     background: #000;
     margin: 0; padding: 0;
@@ -77,8 +78,9 @@ body, html {
 #phone-wrapper {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    width: 100%; 
-    height: 100%;
+    width: 100vw; 
+    height: 100vh;
+    height: 100dvh; /* 强制拉伸到底 */
     background-color: #000; 
     background-size: cover; 
     background-position: center;
@@ -88,19 +90,34 @@ body, html {
 
 /* 锁屏界面 */
 #lock-screen { 
-    position: absolute; width: 100%; height: 100%; z-index: 100; 
+    position: absolute; 
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw; 
+    height: 100vh;
+    height: 100dvh;
+    z-index: 100; 
     display: flex; flex-direction: column; align-items: center; justify-content: space-between; 
-    padding: 100px 0; background-color: var(--bg);
-    background-image: linear-gradient(180deg, rgba(255,255,255,0.6), transparent);
+    padding: 100px 0; 
+    
+    /* 核心修改：换掉原本带纯黑色的渐变，改成灰蓝唯美渐变，彻底消除黑边错觉！ */
+    background-color: #8e9eab;
+    background-image: linear-gradient(180deg, #8e9eab 0%, #eef2f3 100%);
+    
     background-size: cover; background-position: center;
     transition: transform 0.4s cubic-bezier(0.2, 1, 0.2, 1);
-    touch-action: none;
+    touch-action: pan-y;
+    will-change: transform;
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
 #home-screen { 
     position: absolute;
-    width: 100%;
-    height: 100%;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
     z-index: 50;
     background: var(--glass);
     backdrop-filter: var(--blur);
@@ -108,15 +125,6 @@ body, html {
     background-size: cover;
     background-position: center;
     pointer-events: none;
-}
-
-#home-screen .widget-island,
-#home-screen .app-item,
-#home-screen .widget-item,
-#home-screen .dock-container,
-#home-screen .top-nav,
-#home-screen #desktop {
-    pointer-events: auto;
 }
 
 .top-nav {
