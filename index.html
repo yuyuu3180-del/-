@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>垂耳兔小手机</title>
 
 <!-- ================= 桌面图标与全屏沉浸配置 ================= -->
@@ -61,52 +61,68 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-/* 1. 彻底锁定底层，禁止整个网页的弹性滑动 */
 body, html { 
+    width: 100%; 
+    height: 100%;
+    overflow: hidden; 
+    background: #000;
+    margin: 0; padding: 0;
+    display: block; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+    overscroll-behavior: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+}
+
+#phone-wrapper {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     width: 100%; 
     height: 100%;
-    margin: 0; padding: 0;
-    overflow: hidden; 
     background-color: #000; 
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-    overscroll-behavior: none;
-}
-
-/* 2. 让所有主容器像膜一样，死死贴住物理屏幕的四个边 */
-#phone-wrapper, #lock-screen, #home-screen {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0; /* 现代代码的精髓：四角钉死 */
-    width: 100%; 
-    height: 100%;
-    overflow: hidden; 
     background-size: cover; 
     background-position: center;
+    overflow: hidden; 
+    transition: background 0.3s;
 }
 
-/* 3. 锁屏界面还原 */
+/* 锁屏界面 */
 #lock-screen { 
-    z-index: 100; 
+    position: absolute; width: 100%; height: 100%; z-index: 100; 
     display: flex; flex-direction: column; align-items: center; justify-content: space-between; 
-    
-    /* 核心修复：取消那些乱七八糟的底部推高计算，让文字自然落在底部！ */
-    padding: 100px 0 45px 0; 
-    
-    background-color: #8e9eab;
-    background-image: linear-gradient(180deg, #8e9eab 0%, #eef2f3 100%);
+    padding: 100px 0; background-color: var(--bg);
+    background-image: linear-gradient(180deg, rgba(255,255,255,0.6), transparent);
+    background-size: cover; background-position: center;
     transition: transform 0.4s cubic-bezier(0.2, 1, 0.2, 1);
-    touch-action: none;
+    touch-action: pan-y;
     will-change: transform;
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
 #home-screen { 
+    position: absolute;
+    width: 100%;
+    height: 100%;
     z-index: 50;
     background: var(--glass);
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
+    background-size: cover;
+    background-position: center;
     pointer-events: none;
 }
+
+#home-screen .widget-island,
+#home-screen .app-item,
+#home-screen .widget-item,
+#home-screen .dock-container,
+#home-screen .top-nav,
+#home-screen #desktop {
+    pointer-events: auto;
+}
+
 .top-nav {
     position: absolute; top: 50px; left: 0; width: 100%; padding: 0 20px;
     display: flex; justify-content: space-between; align-items: flex-start; z-index: 1000;
@@ -1051,6 +1067,119 @@ body, html {
     z-index: 0;
 }
 
+/* ===== 电影胶片滚动组件（1:1复刻）===== */
+.widget-film {
+    width: calc(var(--cell-w) * 4 - 8px) !important;
+    height: 158px !important;
+    background: #1c1c1e !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.55), inset 0 0 0 1.5px rgba(255,255,255,0.05);
+}
+.film-inner {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    background: #141414;
+    position: relative;
+}
+/* 顶/底齿孔条 */
+.film-sprocket {
+    flex-shrink: 0;
+    height: 13px;
+    background: #1c1c1e;
+    display: flex; align-items: center;
+    padding: 0 3px; gap: 4px;
+    z-index: 10;
+}
+.film-hole {
+    flex-shrink: 0;
+    width: 7px; height: 5px;
+    border-radius: 1.5px;
+    background: #000;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+/* 轨道容器 */
+.film-track {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background: #1a1a1a;
+}
+.film-track-top { border-bottom: 2px solid #111; }
+.film-track-bot { border-top: 2px solid #111; }
+/* 滚动条（每条 = 原版4格 × 2 实现无缝循环）*/
+.film-strip {
+    display: flex;
+    gap: 3px;
+    height: 100%;
+    position: absolute; top: 0; left: 0;
+    will-change: transform;
+    padding: 3px 2px;
+}
+.film-strip.row-top {
+    animation: filmGoRight 22s linear infinite;
+}
+.film-strip.row-bottom {
+    animation: filmGoLeft 22s linear infinite;
+}
+.widget-film.film-paused .film-strip {
+    animation-play-state: paused;
+}
+@keyframes filmGoRight {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+}
+@keyframes filmGoLeft {
+    from { transform: translateX(-50%); }
+    to   { transform: translateX(0); }
+}
+/* 单张格子 */
+.film-cell {
+    flex-shrink: 0;
+    height: 100%;
+    aspect-ratio: 16/11;
+    border-radius: 3px;
+    overflow: hidden;
+    background: #222;
+    border: 1px solid rgba(255,255,255,0.06);
+    position: relative;
+}
+.film-cell::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(160deg, rgba(255,255,255,0.05) 0%, transparent 60%);
+    pointer-events: none;
+}
+.film-cell-img {
+    width: 100%; height: 100%;
+    /* 核心修复：强制等比例缩放填满，且居中 */
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    display: block;
+    border-radius: 2px;
+}
+.film-placeholder {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; color: #2e2e2e;
+    background: #1a1a1a;
+}
+/* VIP 角标 */
+.film-vip-badge {
+    position: absolute;
+    top: 6px; right: 7px;
+    background: linear-gradient(135deg, #c8a96e 0%, #f0d080 100%);
+    color: #3a2000;
+    font-size: 9px; font-weight: 900;
+    padding: 2px 7px; border-radius: 5px;
+    letter-spacing: 0.5px; z-index: 20;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.4);
+    pointer-events: none;
+}
+
+
 </style>
 
 </head>
@@ -1083,10 +1212,10 @@ body, html {
 </div>
 
 <div id="lock-screen"
-     :style="{ backgroundImage: lockBg, transform: lockTransform }"
-     @touchstart="lockTouchStart"
-     @touchmove="lockTouchMove"
-     @touchend="lockTouchEnd">
+     :style="{ backgroundImage: lockBg }"
+     @touchstart.passive="lockTouchStart"
+     @touchmove.passive="lockTouchMove"
+     @touchend.passive="lockTouchEnd">
     <div style="text-align: center; pointer-events: none;">
         <h1 id="clock" style="font-size: 80px; font-weight: 200; color: #333;">{{ clockTime }}</h1>
         <p id="date-str" style="color: #555;">{{ dateStr }}</p>
@@ -1146,6 +1275,7 @@ body, html {
         <div @click="addNewWidget('photo-heart')" style="width: 90px; height: 80px; background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 24px; color: #fff; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"><span style="font-size:12px; margin-top:5px;">心形照片</span></div>
         <div @click="addNewWidget('photo-circle')" style="width: 90px; height: 80px; background: linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%); border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 24px; color: #fff; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"><span style="font-size:12px; margin-top:5px;">圆形照片</span></div>
         <div @click="addNewWidget('text-glass')" style="width: 90px; height: 80px; background: rgba(255,255,255,0.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.8); border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 20px; color: #333; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"><span style="font-size:12px; margin-top:5px;">毛玻璃文字</span></div>
+        <div @click="addNewWidget('film')" style="width: 130px; height: 80px; background: #1a1a1a; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2);"><span style="font-size:11px; margin-top:4px; color:#c8a96e;">🎞️ 电影胶片</span></div>
     </div>
     <div class="section-title">精选 App</div>
     <div id="app-store-grid" style="display: flex; gap: 15px; flex-wrap: wrap;">
@@ -1176,6 +1306,7 @@ body, html {
             🎵 <span id="audio-upload-text">{{ audioUploadText }}</span>
         </div>
         <div style="font-size: 10px; color: #999; margin-top: 8px;">文件将自动保存在浏览器中，刷新不丢失。</div>
+    </div>
     <div class="section-title">四宫格相册音频 (双击卡片播放)</div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <div class="upload-btn-large" style="margin-top:0;" @click="triggerVoiceUpload(1)">🎵 卡片1: <span>{{ voiceBtnText[1] }}</span></div>
@@ -1184,6 +1315,43 @@ body, html {
         <div class="upload-btn-large" style="margin-top:0;" @click="triggerVoiceUpload(4)">🎵 卡片4: <span>{{ voiceBtnText[4] }}</span></div>
     </div>
     <input type="file" id="voice-audio-input" accept="audio/*" style="display: none;" ref="voiceAudioInput" @change="onVoiceAudioChange">
+
+    <div class="section-title">猫耳吧唧 (点击组件圆圈直接更换图片)</div>
+    <div style="background: #fff; padding: 12px 15px; border-radius: 15px; border: 1px solid #eee; font-size: 12px; color: #888; line-height: 1.6;">
+        📌 在桌面直接 <b style="color:#333">点击</b> 猫耳吧唧的圆形头像即可上传图片。<br>
+        若需在编辑模式外也能换图，请先退出编辑模式再点击。
+    </div>
+
+    <div class="section-title">🎬 胶片组件图片 (上排4张 + 下排4张)</div>
+    <div style="background: #fff; padding: 15px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 5px;">
+        <div style="font-size: 12px; color: #666; margin-bottom: 10px;">上排图片（从左往右滚动）</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+            <div class="upload-btn-large" style="margin-top:0;" @click="triggerFilmUpload('top', 1)">🖼 上1: <span>{{ filmBtnText.top1 }}</span></div>
+            <div class="upload-btn-large" style="margin-top:0;" @click="triggerFilmUpload('top', 2)">🖼 上2: <span>{{ filmBtnText.top2 }}</span></div>
+            <div class="upload-btn-large" style="margin-top:0;" @click="triggerFilmUpload('top', 3)">🖼 上3: <span>{{ filmBtnText.top3 }}</span></div>
+            <div class="upload-btn-large" style="margin-top:0;" @click="triggerFilmUpload('top', 4)">🖼 上4: <span>{{ filmBtnText.top4 }}</span></div>
+        </div>
+        <div style="font-size: 12px; color: #666; margin-bottom: 10px;">下排图片（从右往左滚动）</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div class="upload-btn-large" style="margin-top:0;" @click="triggerFilmUpload('bot', 1)">🖼 下1: <span>{{ filmBtnText.bot1 }}</span></div>
+            <div class="upload-btn-large" style="margin-top:0;" @click="triggerFilmUpload('bot', 2)">🖼 下2: <span>{{ filmBtnText.bot2 }}</span></div>
+            <div class="upload-btn-large" style="margin-top:0;" @click="triggerFilmUpload('bot', 3)">🖼 下3: <span>{{ filmBtnText.bot3 }}</span></div>
+            <div class="upload-btn-large" style="margin-top:0;" @click="triggerFilmUpload('bot', 4)">🖼 下4: <span>{{ filmBtnText.bot4 }}</span></div>
+        </div>
+        <input type="file" id="film-img-input" accept="image/*" style="display:none;" ref="filmImgInput" @change="onFilmImgChange">
+    </div>
+
+    <div class="section-title">🐾 猫耳吧唧图片</div>
+    <div style="background: #fff; padding: 15px; border-radius: 15px; border: 1px solid #eee; margin-bottom: 5px;">
+        <div style="font-size: 12px; color: #666; margin-bottom: 10px;">点击上传猫耳吧唧头像</div>
+        <div v-for="badge in badgeWidgets" :key="badge.id"
+             class="upload-btn-large" style="margin-top:0; margin-bottom:8px;"
+             @click="triggerBadgeUpload(badge.id)">
+            🐾 {{ badge.label }}: <span>{{ badge.imgText }}</span>
+        </div>
+        <div v-if="badgeWidgets.length === 0" style="color: #999; font-size: 12px; text-align:center; padding: 10px 0;">
+            请先在桌面添加猫耳吧唧组件
+        </div>
     </div>
 
     <div class="section-title">壁纸设置</div>
@@ -1232,11 +1400,15 @@ createApp({
         const dateStr = ref('');
         const lockBg = ref('');
         const homeBg = ref('');
-        const lockTransform = ref('translateY(0)');
+        // lockTransform 已改为直接操作 DOM，无需 ref
         const widgetPanelOpen = ref(false);
         const diyPanelOpen = ref(false);
         const audioUploadText = ref('点击选择 MP3 文件...');
         const voiceBtnText = reactive({ 1: '上传', 2: '上传', 3: '上传', 4: '上传' });
+        const filmBtnText = reactive({ top1:'上传',top2:'上传',top3:'上传',top4:'上传', bot1:'上传',bot2:'上传',bot3:'上传',bot4:'上传' });
+        const badgeWidgets = ref([]); // 桌面上所有猫耳吧唧组件列表
+        let filmActiveRow = 'top', filmActiveIdx = 1;
+        let badgeActiveId = '';
         const availableApps = ref([]);
         const dockOrder = ref(['dock-phone', 'dock-msg', 'dock-browser', 'dock-camera']);
         const appOverlay = reactive({ open: false, src: '' });
@@ -1252,6 +1424,7 @@ createApp({
         const audioFileInput = ref(null);
         const bgAudio = ref(null);
         const voiceAudioInput = ref(null);
+        const filmImgInput = ref(null);
 
         // ==================== 非响应式全局状态（保持原版逻辑不变）====================
         const DB_NAME = 'Rabbit_Ultra_Island_V15_LocalAudio';
@@ -1263,6 +1436,7 @@ createApp({
         let activeAppId_edit = '';
         let islandAudioUrl = '';
         let voiceUrls = { 1: '', 2: '', 3: '', 4: '' };
+        let filmImages = { top1:'', top2:'', top3:'', top4:'', bot1:'', bot2:'', bot3:'', bot4:'' };
         let voicePlayer = new Audio();
         let activeVoiceSlot = 1;
         let activeEl = null;
@@ -1391,26 +1565,37 @@ createApp({
         }
 
         // ==================== 锁屏手势 ====================
+        function _lockEl() { return document.getElementById('lock-screen'); }
+        let lockEl = null;
         function lockTouchStart(e) {
             lStartY = e.touches[0].clientY;
-            const lockEl = document.getElementById('lock-screen');
+            lockEl = document.getElementById('lock-screen');
             lockEl.style.transition = 'none';
         }
         function lockTouchMove(e) {
-            let diff = e.touches[0].clientY - lStartY;
-            if (diff < 0) lockTransform.value = `translateY(${diff}px)`;
-        }
-        function lockTouchEnd(e) {
-            const lockEl = document.getElementById('lock-screen');
-            lockEl.style.transition = 'transform 0.4s ease';
-            if (e.changedTouches[0].clientY - lStartY < -150) {
-                lockTransform.value = 'translateY(-100%)';
-            } else {
-                lockTransform.value = 'translateY(0)';
+            if (!lockEl) return;
+            const diff = e.touches[0].clientY - lStartY;
+            if (diff < 0) {
+                lockEl.style.transform = `translateY(${diff}px)`;
             }
         }
+        function lockTouchEnd(e) {
+            if (!lockEl) return;
+            lockEl.style.transition = 'transform 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            const dist = e.changedTouches[0].clientY - lStartY;
+            if (dist < -80) {
+                lockEl.style.transform = 'translateY(-100%)';
+            } else {
+                lockEl.style.transform = 'translateY(0)';
+            }
+            lockEl = null;
+        }
         function toLock() {
-            if (!isEditing.value) lockTransform.value = 'translateY(0)';
+            if (!isEditing.value) {
+                const el = _lockEl();
+                el.style.transition = 'transform 0.4s cubic-bezier(0.2, 1, 0.2, 1)';
+                el.style.transform = 'translateY(0)';
+            }
         }
 
         // ==================== 编辑模式 ====================
@@ -1435,7 +1620,7 @@ createApp({
 
         // ==================== 面板控制 ====================
         function openWidgetPanel() { updateAppStore(); closePanels(); widgetPanelOpen.value = true; }
-        function openDiyPanel() { closePanels(); diyPanelOpen.value = true; }
+        function openDiyPanel() { closePanels(); diyPanelOpen.value = true; updateBadgeWidgets(); }
         function closePanels() { widgetPanelOpen.value = false; diyPanelOpen.value = false; }
 
         // ==================== Dock 图标计算属性 ====================
@@ -1516,7 +1701,7 @@ createApp({
         // 全局暴露，让 iframe 内部可以关闭
         window.closeAppOverlay = closeAppOverlay;
 
-        // ==================== 保存布局（优化版：减少 DOM 轮询）====================
+        // ==================== 保存布局 ====================
         async function saveLayout() {
             const items = [];
             document.querySelectorAll('#desktop .app-item, #desktop .widget-item, #home-screen > .widget-island').forEach(el => {
@@ -1607,6 +1792,10 @@ createApp({
                     };
                 } else if (item.type === 'text-glass') {
                     item.data = { text: el.querySelector('.widget-text-glass-content')?.innerText };
+                } else if (item.type === 'film') {
+                    const imgs = [];
+                    for (let i = 1; i <= 8; i++) imgs.push(globalImageCache[item.id + '_film_' + i] || '');
+                    item.data = { imgs };
                 }
                 items.push(item);
             });
@@ -1625,7 +1814,7 @@ createApp({
             await saveToDB('settings', settings);
         }
 
-        // ==================== 加载布局（核心优化：使用 DocumentFragment）====================
+        // ==================== 加载布局 ====================
         async function loadLayout() {
             try {
                 await initDB();
@@ -1639,6 +1828,11 @@ createApp({
                         voiceUrls[i] = URL.createObjectURL(blob);
                         voiceBtnText[i] = "已加载";
                     }
+                }
+                // 加载胶片图片
+                for (const slot of ['top1','top2','top3','top4','bot1','bot2','bot3','bot4']) {
+                    const img = await getFromDB('film_img_' + slot);
+                    if (img) { filmImages[slot] = img; filmBtnText[slot] = '✅已加载'; }
                 }
 
                 isLoading.value = false;
@@ -1668,15 +1862,12 @@ createApp({
                     audioUploadText.value = "已加载本地 MP3 (点击更换)";
                 }
 
-                // ===== 核心优化：用 DocumentFragment 批量插入，避免多次重排 =====
                 await nextTick();
                 const desktop = desktopRef.value;
-                // 确保两个页面容器存在（已在模板中静态声明，无需重建）
                 const p1 = page1Ref.value;
                 const p2 = page2Ref.value;
 
                 if (savedLayout && savedLayout.length > 0) {
-                    // 使用 requestAnimationFrame 分批渲染，避免一次性大量 DOM 操作阻塞主线程
                     const BATCH_SIZE = 5;
                     const batches = [];
                     for (let i = 0; i < savedLayout.length; i += BATCH_SIZE) {
@@ -1690,7 +1881,6 @@ createApp({
                                 const batch = batches[batchIndex];
                                 batch.forEach(item => renderLayoutItem(item));
                                 resolve();
-                                // 继续下一批
                                 if (batchIndex + 1 < batches.length) {
                                     processBatch(batchIndex + 1);
                                 }
@@ -1705,7 +1895,6 @@ createApp({
                     createAppElement('app-jieyou', 3, 2);
                 }
 
-                // 恢复缩放和自由定位（延迟到下一帧）
                 requestAnimationFrame(() => {
                     const clipH = document.getElementById('desktop-clip').clientHeight;
                     if (savedLayout) savedLayout.forEach(item => {
@@ -1726,7 +1915,6 @@ createApp({
                             }
                         }
                     });
-                    // 恢复自定义图标
                     document.querySelectorAll('.app-item').forEach(el => {
                         const id = el.dataset.id;
                         if (customAppIcons[id] && globalImageCache['icon_' + id]) {
@@ -1735,6 +1923,7 @@ createApp({
                         }
                     });
                     updateAppStore();
+                    document.querySelectorAll('.widget-film').forEach(fw => updateFilmWidget(fw));
                 });
 
             } catch (e) {
@@ -1783,11 +1972,53 @@ createApp({
             else if (item.type === 'photo-heart') createPhotoHeartWidget(item.col, item.row, item.id, item.data);
             else if (item.type === 'photo-circle') createPhotoCircleWidget(item.col, item.row, item.id, item.data);
             else if (item.type === 'text-glass') createTextGlassWidget(item.col, item.row, item.id, item.data);
+            else if (item.type === 'film') createFilmWidget(item.col, item.row, item.id, item.data);
             else if (item.type === 'app') createAppElement(item.id, item.col, item.row);
         }
 
         // ==================== 音频上传 ====================
         function triggerAudioUpload() { audioFileInput.value.click(); }
+
+        // ===== 胶片组件图片上传 =====
+        function triggerFilmUpload(row, idx) {
+            filmActiveRow = row;
+            filmActiveIdx = idx;
+            if (filmImgInput.value) filmImgInput.value.click();
+        }
+
+        async function onFilmImgChange(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const slotKey = filmActiveRow + filmActiveIdx;
+            filmBtnText[slotKey] = '处理中...';
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                const dataUrl = ev.target.result;
+                filmImages[slotKey] = dataUrl;
+                filmBtnText[slotKey] = '✅已保存';
+                await saveToDB('film_img_' + slotKey, dataUrl);
+                document.querySelectorAll('.widget-film').forEach(fw => updateFilmWidget(fw));
+                saveLayout();
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        }
+
+        // ===== 猫耳吧唧图片上传（DIY面板）=====
+        function updateBadgeWidgets() {
+            badgeWidgets.value = Array.from(document.querySelectorAll('.widget-badge')).map((el, i) => ({
+                id: el.dataset.id,
+                label: '吧唧' + (i + 1),
+                imgText: globalImageCache[el.dataset.id + '_badge'] ? '✅已上传' : '点击上传'
+            }));
+        }
+
+        function triggerBadgeUpload(badgeId) {
+            badgeActiveId = badgeId;
+            activeEditType = 'widget';
+            currentImgKey = badgeId + '_badge';
+            imgInputRef.value.click();
+        }
 
         function onAudioFileChange(e) {
             const file = e.target.files[0];
@@ -1825,7 +2056,7 @@ createApp({
             imgInputRef.value.click();
         }
 
-        // ==================== 图片上传处理 ====================
+        // ==================== 图片上传处理（核心修复区：清除了大括号错乱） ====================
         function onImageChange(e) {
             const file = e.target.files[0];
             if (file) {
@@ -1871,11 +2102,19 @@ createApp({
                         } else if (key.endsWith('_badge')) {
                             const el = document.querySelector(`.widget-badge[data-id="${id}"] .badge-core`);
                             if (el) el.style.backgroundImage = cssUrl;
+                            updateBadgeWidgets();
                         } else if (key.includes('_img_')) {
                             const parts = key.split('_img_');
                             const idx = parts[1];
                             const el = document.querySelector(`.widget-voice[data-id="${id}"] .voice-card[data-idx="${idx}"] .vc-bg`);
                             if (el) el.style.backgroundImage = cssUrl;
+                        } else if (key.includes('_film_')) {
+                            const frameIdx = key.split('_film_')[1];
+                            document.querySelectorAll(`.widget-film[data-id="${id}"] .film-frame[data-idx="${frameIdx}"]`).forEach(el => {
+                                el.style.backgroundImage = cssUrl;
+                                const placeholder = el.querySelector('.film-frame-placeholder');
+                                if (placeholder) placeholder.style.display = 'none';
+                            });
                         }
                     } else if (activeEditType === 'wallpaper-lock') {
                         globalImageCache['wallpaper_lock'] = cssUrl;
@@ -1888,12 +2127,11 @@ createApp({
                         customAppIcons[activeAppId_edit] = true;
                         const desktopApp = document.querySelector(`.app-item[data-id="${activeAppId_edit}"] .app-icon`);
                         if (desktopApp) { desktopApp.innerText = ''; desktopApp.style.backgroundImage = cssUrl; }
-                        // 更新 Dock（Vue 响应式自动处理）
                     }
                     saveLayout();
                 };
             }
-            imgInputRef.value.value = '';
+            if (imgInputRef.value) imgInputRef.value.value = '';
         }
 
         // ==================== 独立组件大小调节 ====================
@@ -2005,7 +2243,7 @@ createApp({
             e.target.value = '';
         }
 
-        // ==================== 组件创建函数（完整保留原版逻辑）====================
+        // ==================== 组件创建函数 ====================
         function getDesktop() { return desktopRef.value; }
 
         function createIslandWidget(col, row, id, data = null) {
@@ -2327,9 +2565,94 @@ createApp({
             if (data && data.img) { circle.style.backgroundImage = data.img; globalImageCache[imgKey] = data.img; }
             else if (globalImageCache[imgKey]) { circle.style.backgroundImage = globalImageCache[imgKey]; }
             else { circle.style.backgroundImage = "url('https://picsum.photos/seed/handsome/300')"; }
-            circle.onclick = () => { if (!isEditing.value) { activeEditType = 'widget'; currentImgKey = imgKey; imgInputRef.value.click(); } };
+            circle.onclick = (e) => {
+                e.stopPropagation();
+                activeEditType = 'widget';
+                currentImgKey = imgKey;
+                imgInputRef.value.click();
+            };
             div.querySelector('.remove-btn').onclick = (e) => { e.stopPropagation(); div.remove(); updateAppStore(); saveLayout(); };
             getDesktop().appendChild(div); initDrag(div);
+        }
+
+        // ==================== 电影胶片组件 ====================
+        function updateFilmWidget(div) {
+            // 修复：统一使用 background-image，完美解决缩放和破损图问题
+            ['top1','top2','top3','top4'].forEach((slot, i) => {
+                div.querySelectorAll(`.film-top-${i+1}`).forEach(el => {
+                    if (filmImages[slot]) {
+                        el.style.backgroundImage = `url('${filmImages[slot]}')`;
+                        el.textContent = ''; 
+                    }
+                });
+            });
+            ['bot1','bot2','bot3','bot4'].forEach((slot, i) => {
+                div.querySelectorAll(`.film-bot-${i+1}`).forEach(el => {
+                    if (filmImages[slot]) {
+                        el.style.backgroundImage = `url('${filmImages[slot]}')`;
+                        el.textContent = '';
+                    }
+                });
+            });
+        }
+
+        function createFilmWidget(col, row, id, data = null) {
+            const div = document.createElement('div');
+            div.className = 'widget-item widget-film';
+            div.dataset.id = id || 'film-' + Date.now();
+            div.dataset.type = 'film';
+            div.dataset.col = col; div.dataset.row = row;
+
+            function makeSprocket(count) {
+                return Array(count).fill('<div class="film-hole"></div>').join('');
+            }
+
+            function makeStrip(rowClass, slots) {
+                let cells = '';
+                for (let pass = 0; pass < 2; pass++) {
+                    slots.forEach((slot, i) => {
+                        const idx = i + 1;
+                        const rowPrefix = rowClass.includes('top') ? 'top' : 'bot';
+                        const cls = `film-cell-img film-${rowPrefix}-${idx}`;
+                        const src = filmImages[slot] || '';
+                        // 修复：废弃 img 标签，统一用 div + background 避免变形和破损图标
+                        if (src) {
+                            cells += `<div class="film-cell"><div class="${cls}" style="background-image: url('${src}')"></div></div>`;
+                        } else {
+                            cells += `<div class="film-cell"><div class="${cls} film-placeholder">🎞</div></div>`;
+                        }
+                    });
+                }
+                return `<div class="film-strip ${rowClass}">${cells}</div>`;
+            }
+
+            div.innerHTML = `
+                <div class="film-inner">
+                    <div class="film-sprocket top">${makeSprocket(14)}</div>
+                    <div class="film-track film-track-top">
+                        ${makeStrip('row-top', ['top1','top2','top3','top4'])}
+                    </div>
+                    <div class="film-track film-track-bot">
+                        ${makeStrip('row-bottom', ['bot1','bot2','bot3','bot4'])}
+                    </div>
+                    <div class="film-sprocket bottom">${makeSprocket(14)}</div>
+                </div>
+                <div class="film-vip-badge">VIP</div>
+                <div class="remove-btn">×</div>
+            `;
+
+            div.addEventListener('touchstart', () => div.classList.add('film-paused'), { passive: true });
+            div.addEventListener('touchend', () => setTimeout(() => div.classList.remove('film-paused'), 400), { passive: true });
+
+            div.querySelector('.remove-btn').onclick = (e) => {
+                e.stopPropagation();
+                div.remove();
+                updateAppStore();
+                saveLayout();
+            };
+
+            getDesktop().appendChild(div);
+            initDrag(div);
         }
 
         function createAppElement(id, col, row) {
@@ -2350,7 +2673,7 @@ createApp({
 
         // ==================== addNewWidget ====================
         function addNewWidget(type) {
-            const isWide = ['music', 'love', 'voice', 'message', 'message-day', 'profile', 'ins-chat', 'text-glass'].includes(type);
+            const isWide = ['music', 'love', 'voice', 'message', 'message-day', 'profile', 'ins-chat', 'text-glass', 'film'].includes(type);
             const spot = findEmptySpot(isWide);
             if (type === 'twitter') createTwitterWidget(spot.c, spot.r);
             else if (type === 'island') createIslandWidget(0, 0);
@@ -2365,6 +2688,7 @@ createApp({
             else if (type === 'photo-heart') createPhotoHeartWidget(spot.c, spot.r);
             else if (type === 'photo-circle') createPhotoCircleWidget(spot.c, spot.r);
             else if (type === 'text-glass') createTextGlassWidget(spot.c, spot.r);
+            else if (type === 'film') createFilmWidget(spot.c, spot.r);
             else createMusicWidget(spot.c, spot.r);
             if (isEditing.value) {
                 const lastChild = getDesktop().lastChild;
@@ -2382,7 +2706,7 @@ createApp({
                 let r = parseInt(el.dataset.row), c = parseInt(el.dataset.col), type = el.dataset.type;
                 if (r >= 0 && r < 7 && c >= 0 && c < 8) {
                     grid[r][c] = true;
-                    if (['music', 'love', 'voice', 'message', 'message-day', 'profile', 'ins-chat', 'text-glass'].includes(type)) { if (c + 1 < 8) grid[r][c + 1] = true; if (c + 2 < 8) grid[r][c + 2] = true; if (c + 3 < 8) grid[r][c + 3] = true; }
+                    if (['music', 'love', 'voice', 'message', 'message-day', 'profile', 'ins-chat', 'text-glass', 'film'].includes(type)) { if (c + 1 < 8) grid[r][c + 1] = true; if (c + 2 < 8) grid[r][c + 2] = true; if (c + 3 < 8) grid[r][c + 3] = true; }
                     else if (['twitter', 'memo', 'photo-square', 'photo-heart', 'photo-circle'].includes(type)) { if (c + 1 < 8) grid[r][c + 1] = true; }
                     if (['twitter', 'love', 'music', 'memo', 'voice', 'message', 'message-day', 'profile', 'ins-chat', 'photo-square', 'photo-heart', 'photo-circle'].includes(type)) {
                         if (r + 1 < 7) {
@@ -2554,8 +2878,7 @@ createApp({
 
             snapToPage(0, false);
 
-            // Dock 图标点击（Vue 的 dockIconClick 已处理，这里补充兼容旧格式）
-            // Dock 拖拽排序（完整保留原版逻辑）
+            // Dock 拖拽排序
             const dock = dockRef.value;
             if (dock) {
                 let dragIcon = null, placeholder = null, originRect = null;
@@ -2596,7 +2919,6 @@ createApp({
                     placeholder.remove(); placeholder = null;
                     dragIcon.style.cssText = '';
                     if (isEditing.value) dragIcon.classList.add('jiggling');
-                    // 更新 dockOrder 响应式数据
                     dockOrder.value = Array.from(dock.querySelectorAll('.app-icon[data-dock-id]')).map(ic => ic.dataset.dockId);
                     dragIcon = null;
                     saveLayout();
@@ -2608,19 +2930,18 @@ createApp({
         });
 
         return {
-            // 状态
             isLoading, isEditing, currentPage, clockTime, dateStr,
-            lockBg, homeBg, lockTransform, widgetPanelOpen, diyPanelOpen,
+            lockBg, homeBg, widgetPanelOpen, diyPanelOpen,
             audioUploadText, voiceBtnText, availableApps, dockOrder,
             appOverlay, sizePanel, phoneWrapperStyle,
             APP_DATABASE,
-            // Refs
-            desktopRef, page1Ref, page2Ref, dockRef, imgInputRef, audioFileInput, bgAudio, voiceAudioInput,
-            // 方法
+            desktopRef, page1Ref, page2Ref, dockRef, imgInputRef, audioFileInput, bgAudio, voiceAudioInput, filmImgInput,
             lockTouchStart, lockTouchMove, lockTouchEnd, toLock,
             doneEditing, openWidgetPanel, openDiyPanel, closePanels,
             addNewWidget, installApp, exportAll, importAll,
             triggerAudioUpload, onAudioFileChange, triggerVoiceUpload, onVoiceAudioChange,
+            triggerFilmUpload, onFilmImgChange, triggerBadgeUpload, updateBadgeWidgets,
+            filmBtnText, badgeWidgets,
             triggerWallaper, onImageChange, onSizeSlider, onLengthSlider,
             dockIconStyle, dockIconContent, dockIconClick,
             appStoreIconStyle, appStoreIconContent,
