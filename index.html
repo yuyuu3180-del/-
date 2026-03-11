@@ -61,68 +61,52 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+/* 1. 彻底锁定底层，禁止整个网页的弹性滑动 */
 body, html { 
-    /* 放弃 dvh，使用绝对定位填满物理屏幕 */
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     width: 100%; 
     height: 100%;
-    overflow: hidden; 
     margin: 0; padding: 0;
-    background-color: transparent; /* 核心：把底层黑色去掉，变成透明 */
-    display: block; 
+    overflow: hidden; 
+    background-color: #000; 
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
     overscroll-behavior: none;
 }
 
-#phone-wrapper {
+/* 2. 让所有主容器像膜一样，死死贴住物理屏幕的四个边 */
+#phone-wrapper, #lock-screen, #home-screen {
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0; /* 强制四边吸附 */
+    top: 0; left: 0; right: 0; bottom: 0; /* 现代代码的精髓：四角钉死 */
     width: 100%; 
     height: 100%;
-    /* 强制背景延伸进底部黑条区域 */
-    padding-bottom: env(safe-area-inset-bottom);
+    overflow: hidden; 
     background-size: cover; 
     background-position: center;
-    overflow: hidden; 
-    transition: background 0.3s;
 }
 
-/* 锁屏界面 */
+/* 3. 锁屏界面还原 */
 #lock-screen { 
-    position: absolute; 
-    top: 0; left: 0; right: 0; 
-    /* 核心魔法：利用苹果环境变量，把背景强制向下拉伸，吞噬黑边！ */
-    bottom: calc(-1 * env(safe-area-inset-bottom));
     z-index: 100; 
     display: flex; flex-direction: column; align-items: center; justify-content: space-between; 
-    /* 底部文字也要配合安全区往上抬一点 */
-    padding: 100px 0 calc(40px + env(safe-area-inset-bottom)); 
+    
+    /* 核心修复：取消那些乱七八糟的底部推高计算，让文字自然落在底部！ */
+    padding: 100px 0 45px 0; 
+    
     background-color: #8e9eab;
     background-image: linear-gradient(180deg, #8e9eab 0%, #eef2f3 100%);
-    background-size: cover; background-position: center;
     transition: transform 0.4s cubic-bezier(0.2, 1, 0.2, 1);
-    touch-action: pan-y;
+    touch-action: none;
     will-change: transform;
-    -webkit-transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
 }
 
 #home-screen { 
-    position: absolute;
-    top: 0; left: 0; right: 0; 
-    /* 桌面壁纸同样强制向下拉伸吞噬黑边 */
-    bottom: calc(-1 * env(safe-area-inset-bottom));
     z-index: 50;
     background: var(--glass);
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
-    background-size: cover;
-    background-position: center;
     pointer-events: none;
 }
-
 .top-nav {
     position: absolute; top: 50px; left: 0; width: 100%; padding: 0 20px;
     display: flex; justify-content: space-between; align-items: flex-start; z-index: 1000;
