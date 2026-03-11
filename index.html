@@ -62,26 +62,26 @@
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 body, html { 
-    width: 100vw; 
-    height: 100vh;
-    height: 100dvh; /* 苹果专属：动态全屏高度贴合 */
+    /* 放弃 dvh，使用绝对定位填满物理屏幕 */
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; 
+    height: 100%;
     overflow: hidden; 
-    background: #000;
     margin: 0; padding: 0;
+    background-color: transparent; /* 核心：把底层黑色去掉，变成透明 */
     display: block; 
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
     overscroll-behavior: none;
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
 }
 
 #phone-wrapper {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    width: 100vw; 
-    height: 100vh;
-    height: 100dvh; /* 强制拉伸到底 */
-    background-color: #000; 
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0; /* 强制四边吸附 */
+    width: 100%; 
+    height: 100%;
+    /* 强制背景延伸进底部黑条区域 */
+    padding-bottom: env(safe-area-inset-bottom);
     background-size: cover; 
     background-position: center;
     overflow: hidden; 
@@ -91,18 +91,15 @@ body, html {
 /* 锁屏界面 */
 #lock-screen { 
     position: absolute; 
-    top: 0; left: 0; right: 0; bottom: 0;
-    width: 100vw; 
-    height: 100vh;
-    height: 100dvh;
+    top: 0; left: 0; right: 0; 
+    /* 核心魔法：利用苹果环境变量，把背景强制向下拉伸，吞噬黑边！ */
+    bottom: calc(-1 * env(safe-area-inset-bottom));
     z-index: 100; 
     display: flex; flex-direction: column; align-items: center; justify-content: space-between; 
-    padding: 100px 0; 
-    
-    /* 核心修改：换掉原本带纯黑色的渐变，改成灰蓝唯美渐变，彻底消除黑边错觉！ */
+    /* 底部文字也要配合安全区往上抬一点 */
+    padding: 100px 0 calc(40px + env(safe-area-inset-bottom)); 
     background-color: #8e9eab;
     background-image: linear-gradient(180deg, #8e9eab 0%, #eef2f3 100%);
-    
     background-size: cover; background-position: center;
     transition: transform 0.4s cubic-bezier(0.2, 1, 0.2, 1);
     touch-action: pan-y;
@@ -114,10 +111,9 @@ body, html {
 
 #home-screen { 
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
+    top: 0; left: 0; right: 0; 
+    /* 桌面壁纸同样强制向下拉伸吞噬黑边 */
+    bottom: calc(-1 * env(safe-area-inset-bottom));
     z-index: 50;
     background: var(--glass);
     backdrop-filter: var(--blur);
